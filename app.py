@@ -109,24 +109,39 @@ with tab1:
         caffeine = st.selectbox("Caffeine Cups (After 2 PM)", [0, 1, 2, 3, 4, 5])
         
         if st.button("Run ML Prediction"):
-            input_df = pd.DataFrame([[sleep_dur, bedtime, caffeine]], 
-                                    columns=['sleep_duration', 'bedtime_hour', 'caffeine_intake'])
+            # Construct raw input array to prevent feature-name mismatch errors
+            input_features = np.array([[sleep_dur, bedtime, caffeine]])
             
-            if scaler is not None:
-                inputs_scaled = scaler.transform(input_df)
-                raw_pred = ml_model.predict(inputs_scaled)[0]
-            else:
-                raw_pred = ml_model.predict(input_df)[0]
-            
-            # Bound prediction score between 1.0 and 9.0 (Standard KSS Scale)
-            predicted_score = round(float(np.clip(raw_pred, 1.0, 9.0)), 1)
-            
-            st.session_state['predicted_score'] = predicted_score
-            st.session_state['user_dur'] = sleep_dur
-            st.session_state['user_bed'] = bedtime
-            
-            st.metric(label="Predicted KSS Alertness-Sleepiness Score", value=f"{predicted_score} / 9")
-            st.warning("⚠️ **Model Performance Note:** $R^2 \\approx 0.13$. High variance expected due to limited linear predictive power in the underlying dataset.")
+            try:
+                # Apply scaler if present
+                if scaler is not None:
+                    if hasattr(scaler, "feature_names_in_"):
+                        input_df = pd.DataFrame(input_features, columns=scaler.feature_names_in_)
+                        inputs_scaled = scaler.transform(input_df)
+                    else:
+                        inputs_scaled = scaler.transform(input_features)
+                    
+                    raw_pred = ml_model.predict(inputs_scaled)[0]
+                else:
+                    if hasattr(ml_model, "feature_names_in_"):
+                        input_df = pd.DataFrame(input_features, columns=ml_model.feature_names_in_)
+                        raw_pred = ml_model.predict(input_df)[0]
+                    else:
+                        raw_pred = ml_model.predict(input_features)[0]
+                
+                # Bound prediction score between 1.0 and 9.0 (Standard KSS Scale)
+                predicted_score = round(float(np.clip(raw_pred, 1.0, 9.0)), 1)
+                
+                st.session_state['predicted_score'] = predicted_score
+                st.session_state['user_dur'] = sleep_dur
+                st.session_state['user_bed'] = bedtime
+                
+                st.metric(label="Predicted KSS Alertness-Sleepiness Score", value=f"{predicted_score} / 9")
+                st.warning("⚠️ **Model Performance Note:** $R^2 \\approx 0.13$. High variance expected due to limited linear predictive power in the underlying dataset.")
+
+            except Exception as err:
+                st.error(f"Prediction Error: {err}")
+                st.info("Ensure the 3 input features match the exact order used during Colab model training: [Sleep Duration, Bedtime Hour, Caffeine Intake].")
 
 # ------------------------------------------------------------------------------
 # TAB 2: RAG AI Coach Interface
@@ -141,7 +156,6 @@ with tab2:
          "Mode 2: Bedtime Procrastination & Negotiation Coach"]
     )
     
-    # Retrieve current KSS Score or assign default fallback
     current_kss = st.session_state.get('predicted_score', 5.0)
     
     st.info(f"📊 **Current Model Prediction:** User KSS Score is **{current_kss} / 9** (1 = Alert, 9 = Extremely Sleepy)")
@@ -157,7 +171,6 @@ with tab2:
                 top_matches = search_raw_text_chunks(user_query, rag_chunks, top_k=3)
                 context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
                 
-                # Dynamic System Prompts Injecting predicted KSS Score
                 if "Mode 1" in mode:
                     system_prompt = f"""You are a helpful sleep coach assistant.
 The user's predicted Karolinska Sleepiness Scale (KSS) score is {current_kss}/9 (where 1=Extremely Alert and 9=Extremely Sleepy).
