@@ -15,7 +15,7 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Custom CSS targeting Slider numbers and HTML card titles
+# Custom CSS targeting Slider numbers, HTML card titles, and Button text
 st.markdown("""
 <style>
     /* Radio Button Text Styling */
@@ -51,6 +51,12 @@ st.markdown("""
     div[data-testid="stSlider"] div[role="slider"] {
         font-size: 18px !important;
         font-weight: 800 !important;
+    }
+
+    /* Custom Button Styling */
+    div.stButton > button {
+        font-weight: 700 !important;
+        font-size: 16px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -257,7 +263,7 @@ with tab1:
             
         user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
         
-        if st.button("Generate Personalized Feedback"):
+        if st.button("SUBMIT RESPONSE to Generate Personalized Feedback"):
             t_bed = datetime(2026, 1, 1, bed_hr, bed_min)
             t_wake = datetime(2026, 1, 1, wake_hr, wake_min)
             if t_wake <= t_bed:
@@ -367,7 +373,7 @@ USER REFLECTION:
 
         user_query = st.text_area("Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", height=120)
 
-        if st.button("Generate Personalized Feedback"):
+        if st.button("SUBMIT RESPONSE to Generate Personalized Feedback"):
             t_now = datetime(2026, 1, 1, now_hr, now_min)
             t_wake = datetime(2026, 1, 1, target_hr, target_min)
             if t_wake <= t_now:
@@ -455,7 +461,7 @@ with tab2:
     
     st.subheader("2. Module Evaluation & Findings")
     st.info("""
-    **Core Question:** *What additional value does the ML model provide given its limited predictive performance?*
+    **Core Question:** *What additional value does the ML module provide given its limited predictive performance?*
     
-    **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) alertness-sleepiness 1-9 score based on calculated sleep durations and bedtime timing. Ideally, passing this KSS metric directly into both coaching modes will allow the A.I. agent to calibrate its urgency and tone based on predicted fatigue. However, since the predictive ML model yielded poor performance (R-squared value of .13), this model should be viewed as a LIMITATION that can negatively affect the large language model's generated output.
+    **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) score based on calculated sleep durations and bedtime timing. Passing this KSS metric directly into both coaching modes allows the agent to calibrate its urgency and tone based on predicted fatigue.
     """)
