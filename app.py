@@ -15,7 +15,7 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Custom CSS to style st.container(border=True) into rounded cards with clean vertical spacing
+# Custom CSS to style st.container(border=True) into rounded cards with inner background colors
 st.markdown("""
 <style>
     /* Radio Button Text Styling */
@@ -29,39 +29,45 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
-    /* Target Bordered Containers to create rounded card wraps with vertical separation */
+    /* Target Bordered Containers to create rounded pill cards with background colors */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 24px !important;
-        padding: 24px !important;
+        border-radius: 28px !important;
         margin-bottom: 25px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+        overflow: hidden !important;
     }
 
-    /* Blue Bordered Container for Mode 1 Bedtime */
+    /* Apply inner padding and target internal container directly */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        border-radius: 28px !important;
+        padding: 24px !important;
+    }
+
+    /* Blue Oval Card */
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card) {
         border: 2px solid #38bdf8 !important;
-        background-color: #f0f9ff !important;
+        background-color: #e0f2fe !important;
     }
 
-    /* Green Bordered Container for Wake Times */
+    /* Green Oval Card */
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card) {
         border: 2px solid #4ade80 !important;
-        background-color: #f0fdf4 !important;
+        background-color: #dcfce7 !important;
     }
 
-    /* Yellow Bordered Container for Mode 2 Target Time */
+    /* Yellow Oval Card */
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card) {
         border: 2px solid #facc15 !important;
-        background-color: #fefce8 !important;
+        background-color: #fef9c3 !important;
     }
 
-    /* Purple Bordered Container for General Input Cards */
+    /* Purple Oval Card */
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card) {
         border: 2px solid #c084fc !important;
-        background-color: #faf5ff !important;
+        background-color: #f3e8ff !important;
     }
 
-    /* Add space between Question Headers and Input Rows */
+    /* Question Title Styling */
     .question-title {
         font-size: 1.25rem !important;
         font-weight: 700 !important;
@@ -199,14 +205,13 @@ def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_
         
     return hr_24, int(minute), f"{hour_12:02d}:{minute} {period}"
 
-# Corrected response cleaning function to fix regex escape sequence issue
+# Corrected response cleaning function
 def clean_and_trim_response(text):
     cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
     
     if "Here's a thinking process:" in cleaned:
         parts = cleaned.split("Here's a thinking process:", 1)
         lines = parts[1].split("\n")
-        # Fixed regex: 'o' treated as literal character without invalid '\o' escape
         final_lines = [line for line in lines if not re.match(r'^\s*(\d+\.|\*|\-|o)\s+', line)]
         cleaned = " ".join(final_lines).strip()
     
@@ -238,7 +243,7 @@ with tab1:
     st.markdown("---")
     
     if "Mode 1" in mode:
-        # Question Block 1 Container (Blue Rounded Card)
+        # Question Block 1 Container (Blue Filled Oval Card)
         with st.container(border=True):
             st.markdown('<div class="blue-card"></div>', unsafe_allow_html=True)
             st.markdown('<div class="question-title">Previous Night Bedtime</div>', unsafe_allow_html=True)
@@ -246,7 +251,7 @@ with tab1:
                 "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
             )
         
-        # Question Block 2 Container (Green Rounded Card)
+        # Question Block 2 Container (Green Filled Oval Card)
         with st.container(border=True):
             st.markdown('<div class="green-card"></div>', unsafe_allow_html=True)
             st.markdown('<div class="question-title">Morning Wake Up Time</div>', unsafe_allow_html=True)
@@ -254,7 +259,7 @@ with tab1:
                 "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
             )
         
-        # Question Block 3 Container (Purple Rounded Card)
+        # Question Block 3 Container (Purple Filled Oval Card)
         with st.container(border=True):
             st.markdown('<div class="purple-card"></div>', unsafe_allow_html=True)
             user_self_kss = st.slider(
@@ -338,7 +343,7 @@ USER REFLECTION:
                         st.error(f"OpenRouter API Error: {e}")
 
     else:
-        # Question Block 1 Container (Green Rounded Card)
+        # Question Block 1 Container (Green Filled Oval Card)
         with st.container(border=True):
             st.markdown('<div class="green-card"></div>', unsafe_allow_html=True)
             st.markdown('<div class="question-title">What time is it now?</div>', unsafe_allow_html=True)
@@ -346,7 +351,7 @@ USER REFLECTION:
                 "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
             )
         
-        # Question Block 2 Container (Yellow Rounded Card)
+        # Question Block 2 Container (Yellow Filled Oval Card)
         with st.container(border=True):
             st.markdown('<div class="yellow-card"></div>', unsafe_allow_html=True)
             st.markdown('<div class="question-title">What time are you aiming to get up tomorrow?</div>', unsafe_allow_html=True)
@@ -354,7 +359,7 @@ USER REFLECTION:
                 "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
             )
         
-        # Question Block 3 Container (Purple Rounded Card)
+        # Question Block 3 Container (Purple Filled Oval Card)
         with st.container(border=True):
             st.markdown('<div class="purple-card"></div>', unsafe_allow_html=True)
             aim_sleep = st.slider(
