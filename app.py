@@ -8,39 +8,48 @@ from collections import Counter
 from datetime import datetime, timedelta
 
 # ==============================================================================
-# PAGE CONFIGURATION
+# PAGE CONFIGURATION & CUSTOM STYLING
 # ==============================================================================
 st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide")
 
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Custom CSS targeting Streamlit's border containers reliably across all UI re-renders
+# CSS to bump radio button text size and style containers directly
 st.markdown("""
 <style>
-    /* Mode 1 - Card 1: Sky Blue */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(#card-bedtime) {
-        background-color: #e0f2fe !important;
-        border: 2px solid #38bdf8 !important;
-        border-radius: 20px !important;
-        padding: 10px !important;
+    /* Increase font size for "Select Coaching Strategy Mode" label */
+    div[data-testid="stRadio"] > label {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
     }
-    /* Mode 1 - Card 2 / Mode 2 - Card 1: Light Green */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(#card-green) {
-        background-color: #dcfce7 !important;
-        border: 2px solid #4ade80 !important;
-        border-radius: 20px !important;
-        padding: 10px !important;
-    }
-    /* Mode 2 - Card 2: Light Yellow */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(#card-yellow) {
-        background-color: #fef9c3 !important;
-        border: 2px solid #facc15 !important;
-        border-radius: 20px !important;
-        padding: 10px !important;
+    /* Increase font size for radio options (Mode 1 & Mode 2 text) */
+    div[data-testid="stRadio"] div[role="radiogroup"] label p {
+        font-size: 16px !important;
+        font-weight: 600 !important;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Helper function to render guaranteed colored cards around input sections
+def start_colored_card(bg_color, border_color):
+    st.markdown(
+        f"""
+        <div style="
+            background-color: {bg_color};
+            border: 2.5px solid {border_color};
+            border-radius: 20px;
+            padding: 18px 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        ">
+        """,
+        unsafe_allow_html=True
+    )
+
+def end_colored_card():
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Retrieve API Key securely from Streamlit Secrets
 openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY", None)
@@ -171,15 +180,27 @@ def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_
         
     return hr_24, int(minute), f"{hour_12:02d}:{minute} {period}"
 
-# Cleans out <think>...</think> tags and caps output to <= 3 sentences
+# Helper function to remove reasoning/thinking traces and restrict to <= 3 sentences
 def clean_and_trim_response(text):
-    # Remove hidden reasoning/thinking traces
-    cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
-    # Enforce max 3 sentences
+    # 1. Strip <think>...</think> tags if present
+    cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    
+    # 2. Strip plaintext thinking introductions like "Here's a thinking process: ..."
+    if "Here's a thinking process:" in cleaned:
+        parts = cleaned.split("Here's a thinking process:", 1)
+        # Take content before or find where final output starts
+        lines = parts[1].split("\n")
+        final_lines = [line for line in lines if not line.strip().startswith(("1.", "2.", "3.", "4.", "5.", "-", "*", "o "))]
+        cleaned = " ".join(final_lines).strip()
+    
+    # Clean double spaces or leading bullet artifacts
+    cleaned = re.sub(r'^\s*[\*\-\•\d\.]+\s*', '', cleaned).strip()
+    
+    # 3. Cap strictly at 3 sentences
     sentences = re.split(r'(?<=[.!?])\s+', cleaned)
     if len(sentences) > 3:
         return " ".join(sentences[:3])
-    return cleaned
+    return cleaned if cleaned else text
 
 # ==============================================================================
 # INTERFACE TABS DEFINITION
@@ -202,21 +223,21 @@ with tab1:
     st.markdown("---")
     
     if "Mode 1" in mode:
-        # Sky Blue Card Container
-        with st.container(border=True):
-            st.markdown('<span id="card-bedtime"></span>', unsafe_allow_html=True)
-            bed_hr, bed_min, bedtime_display = render_time_picker(
-                "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
-            )
+        # Sky Blue Card Container (Previous Night Bedtime)
+        start_colored_card(bg_color="#e0f2fe", border_color="#38bdf8")
+        bed_hr, bed_min, bedtime_display = render_time_picker(
+            "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
+        )
+        end_colored_card()
         
         st.write("")
         
-        # Light Green Card Container
-        with st.container(border=True):
-            st.markdown('<span id="card-green"></span>', unsafe_allow_html=True)
-            wake_hr, wake_min, wake_display = render_time_picker(
-                "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
-            )
+        # Light Green Card Container (Morning Wake Up Time)
+        start_colored_card(bg_color="#dcfce7", border_color="#4ade80")
+        wake_hr, wake_min, wake_display = render_time_picker(
+            "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
+        )
+        end_colored_card()
         
         st.write("")
         
@@ -255,12 +276,12 @@ with tab1:
                     context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
                     
                     system_prompt = f"""You are a helpful sleep coach assistant.
-STRICT RULE: Do NOT output any internal thinking or reasoning tags. Provide your final response directly in 1 to 3 sentences maximum.
+CRITICAL INSTRUCTION: Output ONLY your final 1-3 sentence advice for the user. Do NOT write down your thinking process, step-by-step analysis, or internal reasoning. Do NOT say "Here's a thinking process:".
 
 The user's predicted Karolinska Sleepiness Scale (KSS) score is {predicted_kss}/9 (1=Extremely Alert, 9=Extremely Sleepy), based on {sleep_duration:.1f} hours of sleep (Bedtime: {bedtime_display}, Wake time: {wake_display}).
 The user self-reported their current alertness-sleepiness as {user_self_kss}/12.
 Acknowledge their predicted KSS score and sleep stats directly in your advice.
-Using the scientific context below, write a supportive response.
+Using the scientific context below, write a supportive answer in max 3 sentences.
 
 CONTEXT:
 {context_str}
@@ -285,7 +306,6 @@ USER REFLECTION:
                         res_json = response.json()
                         raw_ai_response = res_json['choices'][0]['message']['content']
                         
-                        # Strip <think> tags and trim to 3 sentences max
                         final_response = clean_and_trim_response(raw_ai_response)
                         
                         st.success("### AI Coach Guidance")
@@ -302,21 +322,21 @@ USER REFLECTION:
                         st.error(f"OpenRouter API Error: {e}")
 
     else:
-        # Mode 2 - Light Green Card Container
-        with st.container(border=True):
-            st.markdown('<span id="card-green"></span>', unsafe_allow_html=True)
-            now_hr, now_min, now_display = render_time_picker(
-                "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
-            )
+        # Mode 2 - Light Green Card Container ("What time is it now?")
+        start_colored_card(bg_color="#dcfce7", border_color="#4ade80")
+        now_hr, now_min, now_display = render_time_picker(
+            "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
+        )
+        end_colored_card()
         
         st.write("")
         
-        # Mode 2 - Yellow Card Container
-        with st.container(border=True):
-            st.markdown('<span id="card-yellow"></span>', unsafe_allow_html=True)
-            target_hr, target_min, target_display = render_time_picker(
-                "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
-            )
+        # Mode 2 - Yellow Card Container ("What time are you aiming to get up tomorrow?")
+        start_colored_card(bg_color="#fef9c3", border_color="#facc15")
+        target_hr, target_min, target_display = render_time_picker(
+            "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
+        )
+        end_colored_card()
         
         st.write("")
         
@@ -355,11 +375,12 @@ USER REFLECTION:
                     context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
                     
                     system_prompt = f"""You are an accountability Sleep Coach dealing with bedtime procrastination.
-STRICT RULE: Do NOT output any internal thinking or reasoning tags. Provide your final response directly in 1 to 3 sentences maximum.
+CRITICAL INSTRUCTION: Output ONLY your final 1-3 sentence advice for the user. Do NOT write down your thinking process, step-by-step analysis, or internal reasoning. Do NOT say "Here's a thinking process:".
 
 The current time is {now_display}, and the user aims to wake up at {target_display} (available sleep: {available_sleep:.1f} hrs vs target sleep: {aim_sleep} hrs).
 Their predicted Karolinska Sleepiness Scale (KSS) score tomorrow will be {predicted_kss}/9 (where 1=Extremely Alert and 9=Extremely Sleepy).
 Explicitly reference their predicted KSS score to highlight the trade-off between immediate activity gain vs. sacrificed cognitive alertness tomorrow.
+Write a supportive answer in maximum 3 sentences.
 
 CONTEXT:
 {context_str}
@@ -384,7 +405,6 @@ USER NEGOTIATION RATIONALE:
                         res_json = response.json()
                         raw_ai_response = res_json['choices'][0]['message']['content']
                         
-                        # Strip <think> tags and trim to 3 sentences max
                         final_response = clean_and_trim_response(raw_ai_response)
                         
                         st.success("### AI Coach Guidance")
