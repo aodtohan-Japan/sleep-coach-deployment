@@ -209,31 +209,34 @@ with tab1:
         st.markdown('''
         <div style="background-color: #e0f2fe; border: 2px solid #38bdf8; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div class="card-title">Previous Night Bedtime</div>
+        </div>
         ''', unsafe_allow_html=True)
         bed_hr, bed_min, bedtime_display = render_time_picker(
             "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         # Question Block 2 (Green Card Wrapper)
         st.markdown('''
         <div style="background-color: #dcfce7; border: 2px solid #4ade80; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div class="card-title">Morning Wake Up Time</div>
+        </div>
         ''', unsafe_allow_html=True)
         wake_hr, wake_min, wake_display = render_time_picker(
             "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         # Question Block 3 (Purple Card Wrapper)
         st.markdown('''
         <div style="background-color: #f3e8ff; border: 2px solid #c084fc; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)</div>
+        </div>
         ''', unsafe_allow_html=True)
+        
         user_self_kss = st.slider(
             "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
-            min_value=0, max_value=12, value=5, step=1
+            min_value=0, max_value=12, value=5, step=1,
+            label_visibility="collapsed"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
             
         user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
         
@@ -315,31 +318,34 @@ USER REFLECTION:
         st.markdown('''
         <div style="background-color: #dcfce7; border: 2px solid #4ade80; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div class="card-title">What time is it now?</div>
+        </div>
         ''', unsafe_allow_html=True)
         now_hr, now_min, now_display = render_time_picker(
             "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         # Question Block 2 (Yellow Card Wrapper)
         st.markdown('''
         <div style="background-color: #fef9c3; border: 2px solid #facc15; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div class="card-title">What time are you aiming to get up tomorrow?</div>
+        </div>
         ''', unsafe_allow_html=True)
         target_hr, target_min, target_display = render_time_picker(
             "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         # Question Block 3 (Purple Card Wrapper)
         st.markdown('''
         <div style="background-color: #f3e8ff; border: 2px solid #c084fc; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)</div>
+        </div>
         ''', unsafe_allow_html=True)
+
         aim_sleep = st.slider(
             "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
-            min_value=0.0, max_value=12.0, value=8.0, step=0.5
+            min_value=0.0, max_value=12.0, value=8.0, step=0.5,
+            label_visibility="collapsed"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
 
         user_query = st.text_area("Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", height=120)
 
