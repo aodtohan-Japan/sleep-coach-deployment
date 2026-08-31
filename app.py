@@ -15,7 +15,7 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Custom CSS to force background colors and borders directly onto internal Streamlit wrappers
+# Styling for radio buttons and titles inside HTML cards
 st.markdown("""
 <style>
     /* Radio Button Text Styling */
@@ -29,58 +29,12 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
-    /* Base wrapper styling */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 28px !important;
-        margin-bottom: 25px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
-        overflow: hidden !important;
-    }
-
-    /* STRATEGY 1: Force background colors & borders on parent and direct child containers */
-    /* Blue Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card),
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card) > div {
-        background-color: #e0f2fe !important;
-        border: 2px solid #38bdf8 !important;
-        border-radius: 28px !important;
-    }
-
-    /* Green Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card),
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card) > div {
-        background-color: #dcfce7 !important;
-        border: 2px solid #4ade80 !important;
-        border-radius: 28px !important;
-    }
-
-    /* Yellow Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card),
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card) > div {
-        background-color: #fef9c3 !important;
-        border: 2px solid #facc15 !important;
-        border-radius: 28px !important;
-    }
-
-    /* Purple Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card),
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card) > div {
-        background-color: #f3e8ff !important;
-        border: 2px solid #c084fc !important;
-        border-radius: 28px !important;
-    }
-
-    /* Add internal padding to containers */
-    div[data-testid="stVerticalBlockBorderWrapper"] > div {
-        padding: 24px !important;
-    }
-
-    /* Question Title Styling */
-    .question-title {
-        font-size: 1.25rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 15px !important;
-        color: #0f172a !important;
+    /* Question Title Styling for HTML wrappers */
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: #0f172a;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -251,29 +205,35 @@ with tab1:
     st.markdown("---")
     
     if "Mode 1" in mode:
-        # Question Block 1 Container (Blue Filled Oval Card)
-        with st.container(border=True):
-            st.markdown('<div class="blue-card"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="question-title">Previous Night Bedtime</div>', unsafe_allow_html=True)
-            bed_hr, bed_min, bedtime_display = render_time_picker(
-                "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
-            )
+        # Question Block 1 (Blue Card Wrapper)
+        st.markdown('''
+        <div style="background-color: #e0f2fe; border: 2px solid #38bdf8; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">Previous Night Bedtime</div>
+        ''', unsafe_allow_html=True)
+        bed_hr, bed_min, bedtime_display = render_time_picker(
+            "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Question Block 2 Container (Green Filled Oval Card)
-        with st.container(border=True):
-            st.markdown('<div class="green-card"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="question-title">Morning Wake Up Time</div>', unsafe_allow_html=True)
-            wake_hr, wake_min, wake_display = render_time_picker(
-                "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
-            )
+        # Question Block 2 (Green Card Wrapper)
+        st.markdown('''
+        <div style="background-color: #dcfce7; border: 2px solid #4ade80; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">Morning Wake Up Time</div>
+        ''', unsafe_allow_html=True)
+        wake_hr, wake_min, wake_display = render_time_picker(
+            "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Question Block 3 Container (Purple Filled Oval Card)
-        with st.container(border=True):
-            st.markdown('<div class="purple-card"></div>', unsafe_allow_html=True)
-            user_self_kss = st.slider(
-                "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
-                min_value=0, max_value=12, value=5, step=1
-            )
+        # Question Block 3 (Purple Card Wrapper)
+        st.markdown('''
+        <div style="background-color: #f3e8ff; border: 2px solid #c084fc; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        ''', unsafe_allow_html=True)
+        user_self_kss = st.slider(
+            "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
+            min_value=0, max_value=12, value=5, step=1
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
             
         user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
         
@@ -351,29 +311,35 @@ USER REFLECTION:
                         st.error(f"OpenRouter API Error: {e}")
 
     else:
-        # Question Block 1 Container (Green Filled Oval Card)
-        with st.container(border=True):
-            st.markdown('<div class="green-card"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="question-title">What time is it now?</div>', unsafe_allow_html=True)
-            now_hr, now_min, now_display = render_time_picker(
-                "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
-            )
+        # Question Block 1 (Green Card Wrapper)
+        st.markdown('''
+        <div style="background-color: #dcfce7; border: 2px solid #4ade80; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">What time is it now?</div>
+        ''', unsafe_allow_html=True)
+        now_hr, now_min, now_display = render_time_picker(
+            "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Question Block 2 Container (Yellow Filled Oval Card)
-        with st.container(border=True):
-            st.markdown('<div class="yellow-card"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="question-title">What time are you aiming to get up tomorrow?</div>', unsafe_allow_html=True)
-            target_hr, target_min, target_display = render_time_picker(
-                "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
-            )
+        # Question Block 2 (Yellow Card Wrapper)
+        st.markdown('''
+        <div style="background-color: #fef9c3; border: 2px solid #facc15; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">What time are you aiming to get up tomorrow?</div>
+        ''', unsafe_allow_html=True)
+        target_hr, target_min, target_display = render_time_picker(
+            "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Question Block 3 Container (Purple Filled Oval Card)
-        with st.container(border=True):
-            st.markdown('<div class="purple-card"></div>', unsafe_allow_html=True)
-            aim_sleep = st.slider(
-                "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
-                min_value=0.0, max_value=12.0, value=8.0, step=0.5
-            )
+        # Question Block 3 (Purple Card Wrapper)
+        st.markdown('''
+        <div style="background-color: #f3e8ff; border: 2px solid #c084fc; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        ''', unsafe_allow_html=True)
+        aim_sleep = st.slider(
+            "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
+            min_value=0.0, max_value=12.0, value=8.0, step=0.5
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
 
         user_query = st.text_area("Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", height=120)
 
