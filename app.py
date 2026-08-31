@@ -448,7 +448,7 @@ with tab2:
     
     st.subheader("1. System Architecture")
     st.markdown("""
-    * **Predictive ML Module:** Linear Regression ($R^2 \\approx 0.13$) estimating KSS Score (`sleep_model.pkl`) calculated from user schedule inputs.
+    * **Predictive ML Model:** Multiple Linear Regression ($R^2 \\approx 0.13$) estimating KSS Score (`sleep_model.pkl`) calculated from user schedule inputs.
     * **Lightweight RAG Engine:** Fast keyword overlap algorithm operating on raw text chunks (`lightweight_rag_components.pkl`).
     * **Inference Engine:** OpenRouter Free API running `nvidia/nemotron-3.5-lightning:free`.
     """)
@@ -457,5 +457,5 @@ with tab2:
     st.info("""
     **Core Question:** *What additional value does the ML module provide given its limited predictive performance?*
     
-    **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) score based on calculated sleep durations and bedtime timing. Passing this KSS metric directly into both coaching modes allows the agent to calibrate its urgency and tone based on predicted fatigue.
+    **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) alertness-sleepiness 1-9 score based on calculated sleep durations and bedtime timing. Ideally, passing this KSS metric directly into both coaching modes will allow the A.I. agent to calibrate its urgency and tone based on predicted fatigue. However, since the predictive ML model yielded poor performance (R-squared value of .013), this model should be viewed as a LIMITATION that can negatively affect the large language model's generated output. 
     """)
