@@ -5,6 +5,7 @@ import numpy as np
 import requests
 import re
 from collections import Counter
+from datetime import datetime, timedelta
 
 # ==============================================================================
 # PAGE CONFIGURATION
@@ -90,64 +91,40 @@ def search_raw_text_chunks(query, chunks, top_k=3):
     scored_chunks.sort(key=lambda x: x[0], reverse=True)
     return scored_chunks[:top_k]
 
+# Dynamic KSS Predictor Utility
+def predict_kss(sleep_dur, bedtime_hour, caffeine_intake=0):
+    input_features = np.array([[sleep_dur, bedtime_hour, caffeine_intake]])
+    try:
+        if scaler is not None:
+            if hasattr(scaler, "feature_names_in_"):
+                input_df = pd.DataFrame(input_features, columns=scaler.feature_names_in_)
+                inputs_scaled = scaler.transform(input_df)
+            else:
+                inputs_scaled = scaler.transform(input_features)
+            raw_pred = ml_model.predict(inputs_scaled)[0]
+        else:
+            if hasattr(ml_model, "feature_names_in_"):
+                input_df = pd.DataFrame(input_features, columns=ml_model.feature_names_in_)
+                raw_pred = ml_model.predict(input_df)[0]
+            else:
+                raw_pred = ml_model.predict(input_features)[0]
+        return round(float(np.clip(raw_pred, 1.0, 9.0)), 1)
+    except Exception:
+        return 5.0
+
+# Generate 24h Time Options for Dropdowns
+time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
+
 # ==============================================================================
 # INTERFACE TABS
 # ==============================================================================
-tab1, tab2, tab3 = st.tabs(["📊 ML Sleepiness Predictor", "💬 RAG AI Sleep Coach", "📈 System Architecture & Evaluation"])
+tab1, tab2 = st.tabs(["💬 RAG AI Sleep Coach", "📈 System Architecture & Evaluation"])
 
 # ------------------------------------------------------------------------------
-# TAB 1: ML Model Interface
+# TAB 1: RAG AI Sleep Coach Interface
 # ------------------------------------------------------------------------------
 with tab1:
-    st.header("ML Next-Day Sleepiness Score Predictor (KSS)")
-    st.write("This module estimates your Karolinska Sleepiness Scale (KSS) score (1 = Extremely Alert, 9 = Extremely Sleepy).")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        sleep_dur = st.slider("Sleep Duration (Hours)", 3.0, 12.0, 7.0, 0.5)
-        bedtime = st.slider("Bedtime Hour (24h format)", 20.0, 28.0, 23.0, 0.5, help="23 = 11 PM, 24 = Midnight, 26 = 2 AM")
-        caffeine = st.selectbox("Caffeine Cups (After 2 PM)", [0, 1, 2, 3, 4, 5])
-        
-        if st.button("Run ML Prediction"):
-            # Construct raw input array to prevent feature-name mismatch errors
-            input_features = np.array([[sleep_dur, bedtime, caffeine]])
-            
-            try:
-                # Apply scaler if present
-                if scaler is not None:
-                    if hasattr(scaler, "feature_names_in_"):
-                        input_df = pd.DataFrame(input_features, columns=scaler.feature_names_in_)
-                        inputs_scaled = scaler.transform(input_df)
-                    else:
-                        inputs_scaled = scaler.transform(input_features)
-                    
-                    raw_pred = ml_model.predict(inputs_scaled)[0]
-                else:
-                    if hasattr(ml_model, "feature_names_in_"):
-                        input_df = pd.DataFrame(input_features, columns=ml_model.feature_names_in_)
-                        raw_pred = ml_model.predict(input_df)[0]
-                    else:
-                        raw_pred = ml_model.predict(input_features)[0]
-                
-                # Bound prediction score between 1.0 and 9.0 (Standard KSS Scale)
-                predicted_score = round(float(np.clip(raw_pred, 1.0, 9.0)), 1)
-                
-                st.session_state['predicted_score'] = predicted_score
-                st.session_state['user_dur'] = sleep_dur
-                st.session_state['user_bed'] = bedtime
-                
-                st.metric(label="Predicted KSS Alertness-Sleepiness Score", value=f"{predicted_score} / 9")
-                st.warning("⚠️ **Model Performance Note:** $R^2 \\approx 0.13$. High variance expected due to limited linear predictive power in the underlying dataset.")
-
-            except Exception as err:
-                st.error(f"Prediction Error: {err}")
-                st.info("Ensure the 3 input features match the exact order used during Colab model training: [Sleep Duration, Bedtime Hour, Caffeine Intake].")
-
-# ------------------------------------------------------------------------------
-# TAB 2: RAG AI Coach Interface
-# ------------------------------------------------------------------------------
-with tab2:
-    st.header("RAG-Grounded AI Sleep Coach")
+    st.header("AI Sleep Coach")
     st.write("Grounded in medical knowledge extracted from CDC, NSF, Harvard, and NIH guidelines.")
     
     mode = st.radio(
@@ -156,83 +133,183 @@ with tab2:
          "Mode 2: Bedtime Procrastination & Negotiation Coach"]
     )
     
-    current_kss = st.session_state.get('predicted_score', 5.0)
+    st.markdown("---")
     
-    st.info(f"📊 **Current Model Prediction:** User KSS Score is **{current_kss} / 9** (1 = Alert, 9 = Extremely Sleepy)")
-
-    default_text = f"My predicted KSS sleepiness score is {current_kss}/9 based on {st.session_state.get('user_dur', 7.0)} hours of sleep. What recommendations do you have for me?"
-    user_query = st.text_area("Your Sleep Question or Check-in:", value=default_text)
-
-    if st.button("Generate RAG Response"):
-        if not openrouter_api_key:
-            st.error("API Key not found. Please set `OPENROUTER_API_KEY` in Streamlit secrets.")
-        else:
-            with st.spinner("Executing keyword retrieval & querying OpenRouter..."):
-                top_matches = search_raw_text_chunks(user_query, rag_chunks, top_k=3)
-                context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
+    if "Mode 1" in mode:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            bedtime_str = st.selectbox("Previous Night Bedtime", time_options, index=44)  # 22:00
+        with col2:
+            wake_str = st.selectbox("Morning Wake Up Time", time_options, index=14)       # 07:00
+        with col3:
+            user_self_kss = st.selectbox(
+                "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
+                options=list(range(1, 11)),
+                index=4
+            )
+            
+        user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
+        
+        if st.button("Generate Personalized Feedback"):
+            # Calculate sleep duration automatically
+            t_bed = datetime.strptime(bedtime_str, "%H:%M")
+            t_wake = datetime.strptime(wake_str, "%H:%M")
+            if t_wake <= t_bed:
+                t_wake += timedelta(days=1)
+            sleep_duration = (t_wake - t_bed).total_seconds() / 3600.0
+            
+            bedtime_hour = t_bed.hour + (t_bed.minute / 60.0)
+            if bedtime_hour < 12:
+                bedtime_hour += 24  # Normalize late hours
                 
-                if "Mode 1" in mode:
+            predicted_kss = predict_kss(sleep_duration, bedtime_hour)
+            st.session_state['latest_kss'] = predicted_kss
+            
+            # KSS Score Display Box
+            st.info(
+                f"📊 **ML Next-Day Sleepiness Score Predictor (KSS):** **{predicted_kss} / 9**\n\n"
+                f"*Note: Karolinska Sleepiness Scale (KSS) score (1 = Extremely Alert, 9 = Extremely Sleepy).* | "
+                f"Calculated Sleep Duration: **{sleep_duration:.1f} hrs**"
+            )
+            
+            if not openrouter_api_key:
+                st.error("API Key not found. Please set `OPENROUTER_API_KEY` in Streamlit secrets.")
+            else:
+                with st.spinner("Executing keyword retrieval & querying OpenRouter..."):
+                    top_matches = search_raw_text_chunks(user_query, rag_chunks, top_k=3)
+                    context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
+                    
                     system_prompt = f"""You are a helpful sleep coach assistant.
-The user's predicted Karolinska Sleepiness Scale (KSS) score is {current_kss}/9 (where 1=Extremely Alert and 9=Extremely Sleepy).
-Acknowledge their predicted KSS score directly in your advice.
+The user's predicted Karolinska Sleepiness Scale (KSS) score is {predicted_kss}/9 (1=Extremely Alert, 9=Extremely Sleepy), based on {sleep_duration:.1f} hours of sleep (Bedtime: {bedtime_str}, Wake time: {wake_str}).
+The user self-reported their current alertness-sleepiness as {user_self_kss}/10.
+Acknowledge their predicted KSS score and sleep stats directly in your advice.
 Using the scientific context below, write a concise answer (2-3 sentences max).
 Do NOT provide medical advice or diagnose conditions. Keep your response supportive and non-medical.
 
 CONTEXT:
 {context_str}
 
-USER CHECK-IN:
+USER REFLECTION:
 {user_query}"""
-                else:
+
+                    try:
+                        url = "https://openrouter.ai/api/v1/chat/completions"
+                        headers = {
+                            "Authorization": f"Bearer {openrouter_api_key}",
+                            "Content-Type": "application/json"
+                        }
+                        payload = {
+                            "model": "nvidia/nemotron-3.5-lightning:free",
+                            "messages": [{"role": "user", "content": system_prompt}],
+                            "max_tokens": 300,
+                            "reasoning": {"enabled": False}
+                        }
+                        
+                        response = requests.post(url, headers=headers, json=payload)
+                        response.raise_for_status()
+                        res_json = response.json()
+                        ai_response = res_json['choices'][0]['message']['content']
+                        
+                        st.success("### AI Coach Guidance")
+                        st.write(ai_response)
+                        
+                        with st.expander("🔍 View Retrieved Knowledge Context"):
+                            for match in top_matches:
+                                st.caption(f"**From {match[2]} (Match Score: {match[0]}):** {match[1]}")
+                    except Exception as e:
+                        st.error(f"OpenRouter API Error: {e}")
+
+    else:
+        # MODE 2: Bedtime Procrastination & Negotiation Coach
+        col1, col2 = st.columns(2)
+        with col1:
+            current_time_str = st.selectbox("What time is it now?", time_options, index=46) # 23:00
+            target_wake_str = st.selectbox("What time are you aiming to get up tomorrow?", time_options, index=14) # 07:00
+        with col2:
+            aim_sleep = st.slider(
+                "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours mean sleep deprivation)",
+                min_value=0.0, max_value=12.0, value=8.0, step=0.5
+            )
+
+        user_query = st.text_area("Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", height=120)
+
+        if st.button("Generate Personalized Feedback"):
+            # Calculate potential available sleep if going to bed right now
+            t_now = datetime.strptime(current_time_str, "%H:%M")
+            t_wake = datetime.strptime(target_wake_str, "%H:%M")
+            if t_wake <= t_now:
+                t_wake += timedelta(days=1)
+            available_sleep = (t_wake - t_now).total_seconds() / 3600.0
+            
+            bedtime_hour = t_now.hour + (t_now.minute / 60.0)
+            if bedtime_hour < 12:
+                bedtime_hour += 24
+                
+            predicted_kss = predict_kss(available_sleep, bedtime_hour)
+            st.session_state['latest_kss'] = predicted_kss
+            
+            # KSS Score Display Box
+            st.info(
+                f"📊 **ML Next-Day Sleepiness Score Predictor (KSS):** **{predicted_kss} / 9**\n\n"
+                f"*Note: Karolinska Sleepiness Scale (KSS) score (1 = Extremely Alert, 9 = Extremely Sleepy).* | "
+                f"Max Available Sleep: **{available_sleep:.1f} hrs** (Target: **{aim_sleep} hrs**)"
+            )
+
+            if not openrouter_api_key:
+                st.error("API Key not found. Please set `OPENROUTER_API_KEY` in Streamlit secrets.")
+            else:
+                with st.spinner("Executing keyword retrieval & querying OpenRouter..."):
+                    top_matches = search_raw_text_chunks(user_query, rag_chunks, top_k=3)
+                    context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
+                    
                     system_prompt = f"""You are an accountability Sleep Coach dealing with bedtime procrastination.
-The user's predicted Karolinska Sleepiness Scale (KSS) score is {current_kss}/9 (where 1=Extremely Alert and 9=Extremely Sleepy).
+The current time is {current_time_str}, and the user aims to wake up at {target_wake_str} (available sleep: {available_sleep:.1f} hrs vs target sleep: {aim_sleep} hrs).
+Their predicted Karolinska Sleepiness Scale (KSS) score tomorrow will be {predicted_kss}/9 (where 1=Extremely Alert and 9=Extremely Sleepy).
 Explicitly reference their predicted KSS score to highlight the trade-off between immediate activity gain vs. sacrificed cognitive alertness tomorrow.
 Do NOT provide medical advice. Keep your response supportive and non-medical (2-3 sentences max).
 
 CONTEXT:
 {context_str}
 
-USER NEGOTIATION:
+USER NEGOTIATION RATIONALE:
 {user_query}"""
 
-                try:
-                    url = "https://openrouter.ai/api/v1/chat/completions"
-                    headers = {
-                        "Authorization": f"Bearer {openrouter_api_key}",
-                        "Content-Type": "application/json"
-                    }
-                    payload = {
-                        "model": "nvidia/nemotron-3.5-lightning:free",
-                        "messages": [{"role": "user", "content": system_prompt}],
-                        "max_tokens": 300,
-                        "reasoning": {"enabled": False}
-                    }
-                    
-                    response = requests.post(url, headers=headers, json=payload)
-                    response.raise_for_status()
-                    res_json = response.json()
-                    
-                    ai_response = res_json['choices'][0]['message']['content']
-                    
-                    st.success("### AI Coach Guidance")
-                    st.write(ai_response)
-                    
-                    with st.expander("🔍 View Retrieved Knowledge Context"):
-                        for match in top_matches:
-                            st.caption(f"**From {match[2]} (Match Score: {match[0]}):** {match[1]}")
-                            
-                except Exception as e:
-                    st.error(f"OpenRouter API Error: {e}")
+                    try:
+                        url = "https://openrouter.ai/api/v1/chat/completions"
+                        headers = {
+                            "Authorization": f"Bearer {openrouter_api_key}",
+                            "Content-Type": "application/json"
+                        }
+                        payload = {
+                            "model": "nvidia/nemotron-3.5-lightning:free",
+                            "messages": [{"role": "user", "content": system_prompt}],
+                            "max_tokens": 300,
+                            "reasoning": {"enabled": False}
+                        }
+                        
+                        response = requests.post(url, headers=headers, json=payload)
+                        response.raise_for_status()
+                        res_json = response.json()
+                        ai_response = res_json['choices'][0]['message']['content']
+                        
+                        st.success("### AI Coach Guidance")
+                        st.write(ai_response)
+                        
+                        with st.expander("🔍 View Retrieved Knowledge Context"):
+                            for match in top_matches:
+                                st.caption(f"**From {match[2]} (Match Score: {match[0]}):** {match[1]}")
+                    except Exception as e:
+                        st.error(f"OpenRouter API Error: {e}")
 
 # ------------------------------------------------------------------------------
-# TAB 3: System Architecture & Evaluation
+# TAB 2: System Architecture & Evaluation
 # ------------------------------------------------------------------------------
-with tab3:
+with tab2:
     st.header("Module Integration & Evaluation Analysis")
     
     st.subheader("1. System Architecture")
     st.markdown("""
-    * **Predictive ML Module:** Linear Regression ($R^2 \\approx 0.13$) estimating KSS Score (`sleep_model.pkl`).
+    * **Predictive ML Module:** Linear Regression ($R^2 \\approx 0.13$) estimating KSS Score (`sleep_model.pkl`) calculated from user schedule inputs.
     * **Lightweight RAG Engine:** Fast keyword overlap algorithm operating on raw text chunks (`lightweight_rag_components.pkl`).
     * **Inference Engine:** OpenRouter Free API running `nvidia/nemotron-3.5-lightning:free`.
     """)
@@ -242,5 +319,5 @@ with tab3:
     **Core Question:** *What additional value does the ML module provide given its limited predictive performance?*
     
     **Analysis:** 
-    The ML model predicts the user's Karolinska Sleepiness Scale (KSS) score. Passing this KSS metric directly into both coaching modes allows the agent to calibrate its urgency and tone based on predicted fatigue.
+    The ML model predicts the user's Karolinska Sleepiness Scale (KSS) score based on calculated sleep durations and bedtime timing. Passing this KSS metric directly into both coaching modes allows the agent to calibrate its urgency and tone based on predicted fatigue.
     """)
