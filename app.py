@@ -8,30 +8,39 @@ from collections import Counter
 from datetime import datetime, timedelta
 
 # ==============================================================================
-# PAGE CONFIGURATION & STYLES
+# PAGE CONFIGURATION & CONTAINER STYLES
 # ==============================================================================
 st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide")
 
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# CSS Helper for Custom Colored Containers
-def start_colored_box(bg_color, border_color):
-    st.markdown(
-        f"""
-        <div style="
-            background-color: {bg_color};
-            border: 2px solid {border_color};
-            border-radius: 25px;
-            padding: 18px 25px 10px 25px;
-            margin-bottom: 25px;
-        ">
-        """,
-        unsafe_allow_html=True
-    )
-
-def end_colored_box():
-    st.markdown("</div>", unsafe_allow_html=True)
+# Custom CSS to apply background & border colors to Streamlit containers
+st.markdown("""
+<style>
+    div[data-testid="stVerticalBlock"] > div.sky-blue-card {
+        background-color: #e0f2fe;
+        border: 2px solid #38bdf8;
+        border-radius: 20px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+    div[data-testid="stVerticalBlock"] > div.light-green-card {
+        background-color: #dcfce7;
+        border: 2px solid #4ade80;
+        border-radius: 20px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+    div[data-testid="stVerticalBlock"] > div.yellow-card {
+        background-color: #fef9c3;
+        border: 2px solid #facc15;
+        border-radius: 20px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Retrieve API Key securely from Streamlit Secrets
 openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY", None)
@@ -128,7 +137,7 @@ def predict_kss(sleep_dur, bedtime_hour, caffeine_intake=0):
         return 5.0
 
 # ==============================================================================
-# HELPER FUNCTIONS FOR 12-HOUR TIME SELECTION
+# HELPER FUNCTIONS FOR TIME SELECTION (Hour Range: 0 to 12)
 # ==============================================================================
 def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_period="PM"):
     st.markdown(f"#### {label_prefix}")
@@ -144,8 +153,8 @@ def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_
     with col_hr:
         hour_12 = st.selectbox(
             "Hour", 
-            list(range(1, 13)), 
-            index=default_hour - 1, 
+            list(range(0, 13)), # 0 to 12 range
+            index=default_hour, 
             key=f"{label_prefix}_hour"
         )
     with col_min:
@@ -161,6 +170,13 @@ def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_
         hr_24 += 12
         
     return hr_24, int(minute), f"{hour_12:02d}:{minute} {period}"
+
+# Helper function to trim response strictly to <= 3 sentences
+def trim_to_three_sentences(text):
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    if len(sentences) > 3:
+        return " ".join(sentences[:3])
+    return text
 
 # ==============================================================================
 # INTERFACE TABS DEFINITION
@@ -183,26 +199,28 @@ with tab1:
     st.markdown("---")
     
     if "Mode 1" in mode:
-        # 1. Sky Blue Container: Previous Night Bedtime
-        start_colored_box(bg_color="#e0f2fe", border_color="#38bdf8")
-        bed_hr, bed_min, bedtime_display = render_time_picker(
-            "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
-        )
-        end_colored_box()
-        
-        # Vertical Separation
-        st.write("")
-        
-        # 2. Light Green Container: Morning Wake Up Time
-        start_colored_box(bg_color="#dcfce7", border_color="#4ade80")
-        wake_hr, wake_min, wake_display = render_time_picker(
-            "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
-        )
-        end_colored_box()
+        # Sky Blue Oval Box wrapping Previous Night Bedtime & inputs
+        box1 = st.container()
+        with box1:
+            st.markdown('<div class="sky-blue-card">', unsafe_allow_html=True)
+            bed_hr, bed_min, bedtime_display = render_time_picker(
+                "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
         
         st.write("")
         
-        # Alertness-Sleepiness Level Slider (0 to 12)
+        # Light Green Oval Box wrapping Morning Wake Up Time & inputs
+        box2 = st.container()
+        with box2:
+            st.markdown('<div class="light-green-card">', unsafe_allow_html=True)
+            wake_hr, wake_min, wake_display = render_time_picker(
+                "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.write("")
+        
         user_self_kss = st.slider(
             "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
             min_value=0, max_value=12, value=5, step=1
@@ -238,11 +256,12 @@ with tab1:
                     context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
                     
                     system_prompt = f"""You are a helpful sleep coach assistant.
+STRICT RULE: Your output MUST NOT exceed 3 sentences total under any circumstances. Keep it extremely brief and direct.
+
 The user's predicted Karolinska Sleepiness Scale (KSS) score is {predicted_kss}/9 (1=Extremely Alert, 9=Extremely Sleepy), based on {sleep_duration:.1f} hours of sleep (Bedtime: {bedtime_display}, Wake time: {wake_display}).
 The user self-reported their current alertness-sleepiness as {user_self_kss}/12.
 Acknowledge their predicted KSS score and sleep stats directly in your advice.
-Using the scientific context below, write a concise answer (2-3 sentences max).
-Do NOT provide medical advice or diagnose conditions. Keep your response supportive and non-medical.
+Using the scientific context below, write a supportive answer in maximum 3 sentences.
 
 CONTEXT:
 {context_str}
@@ -259,7 +278,7 @@ USER REFLECTION:
                         payload = {
                             "model": "nvidia/nemotron-3.5-lightning:free",
                             "messages": [{"role": "user", "content": system_prompt}],
-                            "max_tokens": 300
+                            "max_tokens": 150
                         }
                         
                         response = requests.post(url, headers=headers, json=payload, timeout=10)
@@ -267,34 +286,42 @@ USER REFLECTION:
                         res_json = response.json()
                         ai_response = res_json['choices'][0]['message']['content']
                         
+                        # Programmatic post-processing enforcement for 3-sentence limit
+                        final_response = trim_to_three_sentences(ai_response)
+                        
                         st.success("### AI Coach Guidance")
-                        st.write(ai_response)
+                        st.write(final_response)
                         
                         with st.expander("🔍 View Retrieved Knowledge Context"):
+                            seen_sources = set()
                             for match in top_matches:
-                                st.caption(f"**From {match[2]} (Match Score: {match[0]}):** {match[1]}")
+                                source_name = match[2]
+                                if source_name not in seen_sources:
+                                    st.markdown(f"• **{source_name}**")
+                                    seen_sources.add(source_name)
                     except Exception as e:
                         st.error(f"OpenRouter API Error: {e}")
 
     else:
-        # MODE 2: Bedtime Procrastination & Negotiation Coach
+        # MODE 2: Light Green Oval Box wrapping What time is it now?
+        box1 = st.container()
+        with box1:
+            st.markdown('<div class="light-green-card">', unsafe_allow_html=True)
+            now_hr, now_min, now_display = render_time_picker(
+                "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        # 1. Light Green Container: What time is it now?
-        start_colored_box(bg_color="#dcfce7", border_color="#4ade80")
-        now_hr, now_min, now_display = render_time_picker(
-            "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
-        )
-        end_colored_box()
-        
-        # Vertical Separation
         st.write("")
         
-        # 2. Yellow Container: What time are you aiming to get up tomorrow?
-        start_colored_box(bg_color="#fef9c3", border_color="#facc15")
-        target_hr, target_min, target_display = render_time_picker(
-            "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
-        )
-        end_colored_box()
+        # Yellow Oval Box wrapping What time are you aiming to get up tomorrow?
+        box2 = st.container()
+        with box2:
+            st.markdown('<div class="yellow-card">', unsafe_allow_html=True)
+            target_hr, target_min, target_display = render_time_picker(
+                "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
         
         st.write("")
         
@@ -333,10 +360,12 @@ USER REFLECTION:
                     context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
                     
                     system_prompt = f"""You are an accountability Sleep Coach dealing with bedtime procrastination.
+STRICT RULE: Your output MUST NOT exceed 3 sentences total under any circumstances. Keep it extremely brief and direct.
+
 The current time is {now_display}, and the user aims to wake up at {target_display} (available sleep: {available_sleep:.1f} hrs vs target sleep: {aim_sleep} hrs).
 Their predicted Karolinska Sleepiness Scale (KSS) score tomorrow will be {predicted_kss}/9 (where 1=Extremely Alert and 9=Extremely Sleepy).
 Explicitly reference their predicted KSS score to highlight the trade-off between immediate activity gain vs. sacrificed cognitive alertness tomorrow.
-Do NOT provide medical advice. Keep your response supportive and non-medical (2-3 sentences max).
+Write a supportive answer in maximum 3 sentences.
 
 CONTEXT:
 {context_str}
@@ -353,7 +382,7 @@ USER NEGOTIATION RATIONALE:
                         payload = {
                             "model": "nvidia/nemotron-3.5-lightning:free",
                             "messages": [{"role": "user", "content": system_prompt}],
-                            "max_tokens": 300
+                            "max_tokens": 150
                         }
                         
                         response = requests.post(url, headers=headers, json=payload, timeout=10)
@@ -361,12 +390,19 @@ USER NEGOTIATION RATIONALE:
                         res_json = response.json()
                         ai_response = res_json['choices'][0]['message']['content']
                         
+                        # Programmatic post-processing enforcement for 3-sentence limit
+                        final_response = trim_to_three_sentences(ai_response)
+                        
                         st.success("### AI Coach Guidance")
-                        st.write(ai_response)
+                        st.write(final_response)
                         
                         with st.expander("🔍 View Retrieved Knowledge Context"):
+                            seen_sources = set()
                             for match in top_matches:
-                                st.caption(f"**From {match[2]} (Match Score: {match[0]}):** {match[1]}")
+                                source_name = match[2]
+                                if source_name not in seen_sources:
+                                    st.markdown(f"• **{source_name}**")
+                                    seen_sources.add(source_name)
                     except Exception as e:
                         st.error(f"OpenRouter API Error: {e}")
 
