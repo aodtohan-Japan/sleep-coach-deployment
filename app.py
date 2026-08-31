@@ -15,7 +15,7 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Custom CSS to style st.container(border=True) into rounded cards with inner background colors
+# Custom CSS to force background colors and borders directly onto internal Streamlit wrappers
 st.markdown("""
 <style>
     /* Radio Button Text Styling */
@@ -29,7 +29,7 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
-    /* Target Bordered Containers to create rounded pill cards with background colors */
+    /* Base wrapper styling */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 28px !important;
         margin-bottom: 25px !important;
@@ -37,34 +37,42 @@ st.markdown("""
         overflow: hidden !important;
     }
 
-    /* Apply inner padding and target internal container directly */
-    div[data-testid="stVerticalBlockBorderWrapper"] > div {
-        border-radius: 28px !important;
-        padding: 24px !important;
-    }
-
+    /* STRATEGY 1: Force background colors & borders on parent and direct child containers */
     /* Blue Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card) {
-        border: 2px solid #38bdf8 !important;
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card),
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card) > div {
         background-color: #e0f2fe !important;
+        border: 2px solid #38bdf8 !important;
+        border-radius: 28px !important;
     }
 
     /* Green Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card) {
-        border: 2px solid #4ade80 !important;
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card),
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card) > div {
         background-color: #dcfce7 !important;
+        border: 2px solid #4ade80 !important;
+        border-radius: 28px !important;
     }
 
     /* Yellow Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card) {
-        border: 2px solid #facc15 !important;
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card),
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card) > div {
         background-color: #fef9c3 !important;
+        border: 2px solid #facc15 !important;
+        border-radius: 28px !important;
     }
 
     /* Purple Oval Card */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card) {
-        border: 2px solid #c084fc !important;
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card),
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card) > div {
         background-color: #f3e8ff !important;
+        border: 2px solid #c084fc !important;
+        border-radius: 28px !important;
+    }
+
+    /* Add internal padding to containers */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        padding: 24px !important;
     }
 
     /* Question Title Styling */
