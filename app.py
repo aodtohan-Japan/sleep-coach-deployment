@@ -8,12 +8,30 @@ from collections import Counter
 from datetime import datetime, timedelta
 
 # ==============================================================================
-# PAGE CONFIGURATION
+# PAGE CONFIGURATION & STYLES
 # ==============================================================================
 st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide")
 
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
+
+# CSS Helper for Custom Colored Containers
+def start_colored_box(bg_color, border_color):
+    st.markdown(
+        f"""
+        <div style="
+            background-color: {bg_color};
+            border: 2px solid {border_color};
+            border-radius: 25px;
+            padding: 18px 25px 10px 25px;
+            margin-bottom: 25px;
+        ">
+        """,
+        unsafe_allow_html=True
+    )
+
+def end_colored_box():
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Retrieve API Key securely from Streamlit Secrets
 openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY", None)
@@ -35,7 +53,6 @@ def load_pickle_artifacts():
 try:
     ml_payload, rag_payload = load_pickle_artifacts()
     
-    # Resilient ML Payload Unpacking
     if isinstance(ml_payload, dict):
         ml_model = ml_payload.get('model')
         scaler = ml_payload.get('scaler', None)
@@ -46,7 +63,6 @@ try:
         ml_model = ml_payload
         scaler = None
         
-    # Resilient RAG Payload Unpacking
     if isinstance(rag_payload, dict):
         rag_chunks = rag_payload.get('chunks', rag_payload.get('documents', []))
     else:
@@ -112,10 +128,10 @@ def predict_kss(sleep_dur, bedtime_hour, caffeine_intake=0):
         return 5.0
 
 # ==============================================================================
-# HELPER FUNCTIONS FOR 12-HOUR TIME SELECTION & CONVERSION
+# HELPER FUNCTIONS FOR 12-HOUR TIME SELECTION
 # ==============================================================================
 def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_period="PM"):
-    st.markdown(f"**{label_prefix}**")
+    st.markdown(f"#### {label_prefix}")
     col_period, col_hr, col_min = st.columns(3)
     
     with col_period:
@@ -167,24 +183,29 @@ with tab1:
     st.markdown("---")
     
     if "Mode 1" in mode:
-        col1, col2 = st.columns(2)
+        # 1. Sky Blue Container: Previous Night Bedtime
+        start_colored_box(bg_color="#e0f2fe", border_color="#38bdf8")
+        bed_hr, bed_min, bedtime_display = render_time_picker(
+            "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
+        )
+        end_colored_box()
         
-        with col1:
-            bed_hr, bed_min, bedtime_display = render_time_picker(
-                "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
-            )
-            
-        with col2:
-            wake_hr, wake_min, wake_display = render_time_picker(
-                "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
-            )
-            
-        st.markdown("<br>", unsafe_allow_html=True)
+        # Vertical Separation
+        st.write("")
         
-        user_self_kss = st.selectbox(
+        # 2. Light Green Container: Morning Wake Up Time
+        start_colored_box(bg_color="#dcfce7", border_color="#4ade80")
+        wake_hr, wake_min, wake_display = render_time_picker(
+            "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
+        )
+        end_colored_box()
+        
+        st.write("")
+        
+        # Alertness-Sleepiness Level Slider (0 to 12)
+        user_self_kss = st.slider(
             "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
-            options=list(range(1, 11)),
-            index=4
+            min_value=0, max_value=12, value=5, step=1
         )
             
         user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
@@ -218,7 +239,7 @@ with tab1:
                     
                     system_prompt = f"""You are a helpful sleep coach assistant.
 The user's predicted Karolinska Sleepiness Scale (KSS) score is {predicted_kss}/9 (1=Extremely Alert, 9=Extremely Sleepy), based on {sleep_duration:.1f} hours of sleep (Bedtime: {bedtime_display}, Wake time: {wake_display}).
-The user self-reported their current alertness-sleepiness as {user_self_kss}/10.
+The user self-reported their current alertness-sleepiness as {user_self_kss}/12.
 Acknowledge their predicted KSS score and sleep stats directly in your advice.
 Using the scientific context below, write a concise answer (2-3 sentences max).
 Do NOT provide medical advice or diagnose conditions. Keep your response supportive and non-medical.
@@ -256,19 +277,26 @@ USER REFLECTION:
                         st.error(f"OpenRouter API Error: {e}")
 
     else:
-        col1, col2 = st.columns(2)
+        # MODE 2: Bedtime Procrastination & Negotiation Coach
         
-        with col1:
-            now_hr, now_min, now_display = render_time_picker(
-                "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
-            )
-            
-        with col2:
-            target_hr, target_min, target_display = render_time_picker(
-                "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
-            )
-            
-        st.markdown("<br>", unsafe_allow_html=True)
+        # 1. Light Green Container: What time is it now?
+        start_colored_box(bg_color="#dcfce7", border_color="#4ade80")
+        now_hr, now_min, now_display = render_time_picker(
+            "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
+        )
+        end_colored_box()
+        
+        # Vertical Separation
+        st.write("")
+        
+        # 2. Yellow Container: What time are you aiming to get up tomorrow?
+        start_colored_box(bg_color="#fef9c3", border_color="#facc15")
+        target_hr, target_min, target_display = render_time_picker(
+            "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
+        )
+        end_colored_box()
+        
+        st.write("")
         
         aim_sleep = st.slider(
             "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
