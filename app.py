@@ -455,7 +455,7 @@ with tab2:
     
     st.subheader("2. Module Evaluation & Findings")
     st.info("""
-    **Core Question:** *What additional value does the ML module provide given its limited predictive performance?*
+    **Core Question:** *What additional value does the ML model provide given its limited predictive performance?*
     
     **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) alertness-sleepiness 1-9 score based on calculated sleep durations and bedtime timing. Ideally, passing this KSS metric directly into both coaching modes will allow the A.I. agent to calibrate its urgency and tone based on predicted fatigue. However, since the predictive ML model yielded poor performance (R-squared value of .13), this model should be viewed as a LIMITATION that can negatively affect the large language model's generated output.
     """)
