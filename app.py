@@ -28,8 +28,8 @@ def load_pickle_artifacts():
     # Load ML Model Components
     ml_payload = joblib.load('sleep_model.pkl')
     
-    # Load RAG Components
-    rag_payload = joblib.load('rag_components.pkl')
+    # Load Lightweight RAG Components
+    rag_payload = joblib.load('lightweight_rag_components.pkl')
     
     return ml_payload, rag_payload
 
@@ -43,16 +43,16 @@ try:
     else:
         ml_model, scaler = ml_payload[0], ml_payload[1]
         
-    # Extract RAG objects (handles list of dicts or saved payload dictionary)
+    # Extract Lightweight RAG objects (handles list of dicts or saved payload dictionary)
     if isinstance(rag_payload, dict):
         rag_chunks = rag_payload.get('chunks', rag_payload.get('documents', []))
     else:
-        rag_chunks = rag_payload  # List of chunk dictionaries [{'text': ..., 'source': ...}]
+        rag_chunks = rag_payload  # List of lightweight chunk dictionaries [{'text': ..., 'source': ...}]
 
-    st.sidebar.success("✅ Models & Knowledge Base Loaded Successfully!")
+    st.sidebar.success("✅ Models & Lightweight Knowledge Base Loaded Successfully!")
 except Exception as e:
     st.sidebar.error(f"Error loading .pkl files: {e}")
-    st.error("Please ensure `sleep_model.pkl` and `rag_components.pkl` are in your GitHub repository root folder.")
+    st.error("Please ensure `sleep_model.pkl` and `lightweight_rag_components.pkl` are present in your GitHub repository root folder.")
     st.stop()
 
 # ==============================================================================
@@ -119,13 +119,12 @@ with tab2:
         if not openrouter_api_key:
             st.error("Please enter your OpenRouter API key in the sidebar.")
         else:
-            with st.spinner("Retrieving facts from knowledge base & querying OpenRouter..."):
-                # Lightweight Keyword Retrieval matching RAG chunks
+            with st.spinner("Retrieving facts from lightweight knowledge base & querying OpenRouter..."):
+                # Keyword Retrieval matching lightweight RAG chunks
                 query_words = set(user_query.lower().split())
                 scored_chunks = []
                 
                 for item in rag_chunks:
-                    # Support both dict chunks and string chunks
                     text_content = item['text'] if isinstance(item, dict) else str(item)
                     source_doc = item.get('source', 'Sleep Document') if isinstance(item, dict) else 'Knowledge Base'
                     
@@ -199,7 +198,7 @@ with tab3:
     st.subheader("1. System Architecture")
     st.markdown("""
     * **Predictive ML Module:** Linear Regression ($R^2 \\approx 0.13$) trained on UK Sleep Dataset metrics (`sleep_model.pkl`).
-    * **RAG Knowledge Base:** Structured chunk index generated from 5 CDC, NSF, NIH, and Harvard peer-reviewed articles (`rag_components.pkl`).
+    * **RAG Knowledge Base:** Compressed lightweight chunk index generated from 5 CDC, NSF, NIH, and Harvard peer-reviewed articles (`lightweight_rag_components.pkl`).
     * **Inference Engine:** OpenRouter Free API running `nvidia/nemotron-3.5-lightning:free`.
     """)
     
