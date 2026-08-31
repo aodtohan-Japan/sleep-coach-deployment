@@ -15,19 +15,58 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# CSS Styling to enforce radio button font sizes
+# Custom CSS to style st.container(border=True) into rounded cards with clean vertical spacing
 st.markdown("""
 <style>
-    /* Increase font size for "Select Coaching Strategy Mode" label */
+    /* Radio Button Text Styling */
     div[data-testid="stRadio"] > label {
         font-size: 20px !important;
         font-weight: 700 !important;
         color: #1e293b !important;
     }
-    /* Increase font size for radio options (Mode 1 & Mode 2 text) */
     div[data-testid="stRadio"] div[role="radiogroup"] label p {
         font-size: 16px !important;
         font-weight: 600 !important;
+    }
+
+    /* Target Bordered Containers to create rounded card wraps with vertical separation */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 24px !important;
+        padding: 24px !important;
+        margin-bottom: 25px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    /* Blue Bordered Container for Mode 1 Bedtime */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.blue-card) {
+        border: 2px solid #38bdf8 !important;
+        background-color: #f0f9ff !important;
+    }
+
+    /* Green Bordered Container for Wake Times */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.green-card) {
+        border: 2px solid #4ade80 !important;
+        background-color: #f0fdf4 !important;
+    }
+
+    /* Yellow Bordered Container for Mode 2 Target Time */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.yellow-card) {
+        border: 2px solid #facc15 !important;
+        background-color: #fefce8 !important;
+    }
+
+    /* Purple Bordered Container for General Input Cards */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.purple-card) {
+        border: 2px solid #c084fc !important;
+        background-color: #faf5ff !important;
+    }
+
+    /* Add space between Question Headers and Input Rows */
+    .question-title {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 15px !important;
+        color: #0f172a !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -127,7 +166,7 @@ def predict_kss(sleep_dur, bedtime_hour, caffeine_intake=0):
         return 5.0
 
 # ==============================================================================
-# HELPER FUNCTIONS FOR TIME SELECTION (Hour Range: 0 to 12)
+# HELPER FUNCTIONS FOR TIME SELECTION
 # ==============================================================================
 def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_period="PM"):
     col_period, col_hr, col_min = st.columns(3)
@@ -160,22 +199,19 @@ def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_
         
     return hr_24, int(minute), f"{hour_12:02d}:{minute} {period}"
 
-# Helper function to remove reasoning/thinking traces and restrict to <= 3 sentences
+# Corrected response cleaning function to fix regex escape sequence issue
 def clean_and_trim_response(text):
-    # 1. Strip <think>...</think> tags if present
     cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
     
-    # 2. Strip plaintext thinking introductions like "Here's a thinking process: ..."
     if "Here's a thinking process:" in cleaned:
         parts = cleaned.split("Here's a thinking process:", 1)
         lines = parts[1].split("\n")
-        final_lines = [line for line in lines if not re.match(r'^\s*(\d+\.|\*|\-|\o)\s+', line)]
+        # Fixed regex: 'o' treated as literal character without invalid '\o' escape
+        final_lines = [line for line in lines if not re.match(r'^\s*(\d+\.|\*|\-|o)\s+', line)]
         cleaned = " ".join(final_lines).strip()
     
-    # Clean double spaces or leading bullet artifacts
     cleaned = re.sub(r'^\s*[\*\-\•\d\.]+\s*', '', cleaned).strip()
     
-    # 3. Cap strictly at 3 sentences
     sentences = re.split(r'(?<=[.!?])\s+', cleaned)
     if len(sentences) > 3:
         return " ".join(sentences[:3])
@@ -202,27 +238,29 @@ with tab1:
     st.markdown("---")
     
     if "Mode 1" in mode:
-        # Strategy: Use Native Callout Banners + Containers for Clean Sectioning
-        st.info("🟦 **Previous Night Bedtime**")
-        with st.container():
+        # Question Block 1 Container (Blue Rounded Card)
+        with st.container(border=True):
+            st.markdown('<div class="blue-card"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="question-title">Previous Night Bedtime</div>', unsafe_allow_html=True)
             bed_hr, bed_min, bedtime_display = render_time_picker(
                 "Previous Night Bedtime", default_hour=10, default_minute=0, default_period="PM"
             )
         
-        st.write("")
-        
-        st.success("🟩 **Morning Wake Up Time**")
-        with st.container():
+        # Question Block 2 Container (Green Rounded Card)
+        with st.container(border=True):
+            st.markdown('<div class="green-card"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="question-title">Morning Wake Up Time</div>', unsafe_allow_html=True)
             wake_hr, wake_min, wake_display = render_time_picker(
                 "Morning Wake Up Time", default_hour=7, default_minute=0, default_period="AM"
             )
         
-        st.write("")
-        
-        user_self_kss = st.slider(
-            "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
-            min_value=0, max_value=12, value=5, step=1
-        )
+        # Question Block 3 Container (Purple Rounded Card)
+        with st.container(border=True):
+            st.markdown('<div class="purple-card"></div>', unsafe_allow_html=True)
+            user_self_kss = st.slider(
+                "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
+                min_value=0, max_value=12, value=5, step=1
+            )
             
         user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
         
@@ -300,27 +338,29 @@ USER REFLECTION:
                         st.error(f"OpenRouter API Error: {e}")
 
     else:
-        # Mode 2: Callout Banners for Current Time & Target Wake Time
-        st.success("🟩 **What time is it now?**")
-        with st.container():
+        # Question Block 1 Container (Green Rounded Card)
+        with st.container(border=True):
+            st.markdown('<div class="green-card"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="question-title">What time is it now?</div>', unsafe_allow_html=True)
             now_hr, now_min, now_display = render_time_picker(
                 "What time is it now?", default_hour=11, default_minute=0, default_period="PM"
             )
         
-        st.write("")
-        
-        st.warning("🟨 **What time are you aiming to get up tomorrow?**")
-        with st.container():
+        # Question Block 2 Container (Yellow Rounded Card)
+        with st.container(border=True):
+            st.markdown('<div class="yellow-card"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="question-title">What time are you aiming to get up tomorrow?</div>', unsafe_allow_html=True)
             target_hr, target_min, target_display = render_time_picker(
                 "What time are you aiming to get up tomorrow?", default_hour=7, default_minute=0, default_period="AM"
             )
         
-        st.write("")
-        
-        aim_sleep = st.slider(
-            "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
-            min_value=0.0, max_value=12.0, value=8.0, step=0.5
-        )
+        # Question Block 3 Container (Purple Rounded Card)
+        with st.container(border=True):
+            st.markdown('<div class="purple-card"></div>', unsafe_allow_html=True)
+            aim_sleep = st.slider(
+                "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
+                min_value=0.0, max_value=12.0, value=8.0, step=0.5
+            )
 
         user_query = st.text_area("Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", height=120)
 
