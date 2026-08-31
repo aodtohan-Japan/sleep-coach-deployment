@@ -1,97 +1,212 @@
 import streamlit as st
-from openai import OpenAI
+import joblib
+import pandas as pd
+import numpy as np
+import requests
 
-# Page setup
-st.set_page_config(page_title="AI Sleep Coach MVP", layout="wide")
+# ==============================================================================
+# PAGE CONFIGURATION
+# ==============================================================================
+st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide")
+
 st.title("🌙 AI Sleep Coach MVP")
-st.caption("Integrating Classical ML Predictions with RAG-based Conversational Coaching via OpenRouter Free Router")
+st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Sidebar: Configuration
-with st.sidebar:
-    st.header("1. API Configuration")
-    openrouter_api_key = st.text_input("Enter OpenRouter API Key", type="password")
+# Sidebar Configuration
+st.sidebar.header("🔑 API Configuration")
+openrouter_api_key = st.sidebar.text_input(
+    "OpenRouter API Key", 
+    type="password", 
+    help="Enter your key from openrouter.ai (using nvidia/nemotron-3.5-lightning:free)"
+)
+
+# ==============================================================================
+# LOAD ARTIFACTS (.pkl files)
+# ==============================================================================
+@st.cache_resource
+def load_pickle_artifacts():
+    # Load ML Model Components
+    ml_payload = joblib.load('sleep_model.pkl')
     
-    # Using the exact free router model endpoint
-    selected_model = "openrouter/free"
-    st.info("Using OpenRouter Free Models Router (`openrouter/free`)")
-
-    st.header("2. Interaction Mode")
-    mode = st.radio("Select Workflow", ["Morning Check-In", "Bedtime Negotiation / Sleep Procrastination"])
-    include_ml = st.checkbox("Include ML Prediction in RAG Context", value=True)
-
-# Main Dashboard: Step 1 Inputs
-st.header("Step 1: Input Daily Sleep Metrics")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    sleep_duration = st.slider("Sleep Duration (hours)", 3.0, 12.0, 7.0, 0.5)
-with col2:
-    sleep_quality = st.slider("Perceived Sleep Quality (1-10)", 1, 10, 6)
-with col3:
-    caffeine_intake = st.number_input("Caffeine Intake (cups of coffee)", 0, 10, 2)
-
-# Quantitative ML Model (UK Sleep Dataset: R² ≈ 0.13)
-predicted_alertness = max(1.0, min(10.0, (sleep_duration * 0.4) + (sleep_quality * 0.3) - (caffeine_intake * 0.2) + 2.5))
-
-# Step 2: System Outputs
-st.header("Step 2: Dual-Module System Analysis")
-col_ml, col_rag = st.columns([1, 2])
-
-# Left Column: ML Component
-with col_ml:
-    st.markdown("### 🤖 Quantitative ML Model")
-    st.metric(label="Predicted Next-Day Alertness Score", value=f"{predicted_alertness:.1f} / 10")
+    # Load RAG Components
+    rag_payload = joblib.load('rag_components.pkl')
     
-    st.warning(
-        "**Model Limitation Notice ($R^2 \\approx 0.13$):**\n"
-        "This linear regression model trained on the UK Sleep Dataset exhibits low predictive capability. "
-        "It is incorporated here as an experimental baseline to supplement the conversational RAG system."
+    return ml_payload, rag_payload
+
+try:
+    ml_payload, rag_payload = load_pickle_artifacts()
+    
+    # Extract ML objects (handles dict structure or direct tuple)
+    if isinstance(ml_payload, dict):
+        ml_model = ml_payload.get('model')
+        scaler = ml_payload.get('scaler')
+    else:
+        ml_model, scaler = ml_payload[0], ml_payload[1]
+        
+    # Extract RAG objects (handles list of dicts or saved payload dictionary)
+    if isinstance(rag_payload, dict):
+        rag_chunks = rag_payload.get('chunks', rag_payload.get('documents', []))
+    else:
+        rag_chunks = rag_payload  # List of chunk dictionaries [{'text': ..., 'source': ...}]
+
+    st.sidebar.success("✅ Models & Knowledge Base Loaded Successfully!")
+except Exception as e:
+    st.sidebar.error(f"Error loading .pkl files: {e}")
+    st.error("Please ensure `sleep_model.pkl` and `rag_components.pkl` are in your GitHub repository root folder.")
+    st.stop()
+
+# ==============================================================================
+# INTERFACE TABS
+# ==============================================================================
+tab1, tab2, tab3 = st.tabs(["📊 ML Sleepiness Predictor", "💬 RAG AI Sleep Coach", "📈 System Architecture & Evaluation"])
+
+# ------------------------------------------------------------------------------
+# TAB 1: ML Model Interface
+# ------------------------------------------------------------------------------
+with tab1:
+    st.header("ML Next-Day Sleepiness Score Predictor")
+    st.write("This module utilizes a linear regression model trained on UK sleep data to estimate daytime sleepiness.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        sleep_dur = st.slider("Sleep Duration (Hours)", 3.0, 12.0, 7.0, 0.5)
+        bedtime = st.slider("Bedtime Hour (24h format)", 20.0, 28.0, 23.0, 0.5, help="23 = 11 PM, 24 = Midnight, 26 = 2 AM")
+        caffeine = st.selectbox("Caffeine Cups (After 2 PM)", [0, 1, 2, 3, 4, 5])
+        
+        if st.button("Run ML Prediction"):
+            # Build input dataframe matching model training features
+            input_df = pd.DataFrame([[sleep_dur, bedtime, caffeine]], 
+                                    columns=['sleep_duration', 'bedtime_hour', 'caffeine_intake'])
+            
+            # Scale features if scaler exists, else predict directly
+            if scaler is not None:
+                inputs_scaled = scaler.transform(input_df)
+                raw_pred = ml_model.predict(inputs_scaled)[0]
+            else:
+                raw_pred = ml_model.predict(input_df)[0]
+            
+            # Bound prediction score between 1 and 10
+            predicted_score = round(float(np.clip(raw_pred, 1.0, 10.0)), 1)
+            
+            # Store in session state for use in Tab 2
+            st.session_state['predicted_score'] = predicted_score
+            st.session_state['user_dur'] = sleep_dur
+            st.session_state['user_bed'] = bedtime
+            
+            st.metric(label="Predicted Daytime Sleepiness Score", value=f"{predicted_score} / 10")
+            st.warning("⚠️ **Model Performance Note:** $R^2 \\approx 0.13$. High variance expected due to limited linear predictive power in the underlying dataset.")
+
+# ------------------------------------------------------------------------------
+# TAB 2: RAG AI Coach Interface
+# ------------------------------------------------------------------------------
+with tab2:
+    st.header("RAG-Grounded AI Sleep Coach")
+    st.write("Grounded in medical knowledge extracted from CDC, NSF, Harvard, and NIH guidelines.")
+    
+    mode = st.radio(
+        "Select Coaching Strategy Mode:", 
+        ["Mode 1: Morning Check-in & Habit Reflection", 
+         "Mode 2: Bedtime Procrastination & Negotiation Coach"]
     )
+    
+    default_text = ""
+    if 'predicted_score' in st.session_state:
+        default_text = f"I slept {st.session_state['user_dur']} hours last night and my predicted sleepiness score is {st.session_state['predicted_score']}/10. What should I do tonight?"
+    
+    user_query = st.text_area("Your Sleep Question or Check-in:", value=default_text)
 
-# Right Column: RAG Component
-with col_rag:
-    st.markdown("### 📚 Grounded RAG Sleep Coach")
-    
-    default_query = "I slept 7 hours but I still feel groggy. What should I do today?" if mode == "Morning Check-In" else "I want to go to sleep, but I keep scrolling on my phone. Help me stop."
-    user_query = st.text_area("Ask the Sleep Coach:", value=default_query)
-    
-    if st.button("Generate Guidance", type="primary"):
+    if st.button("Generate RAG Response"):
         if not openrouter_api_key:
-            st.error("Please enter your OpenRouter API Key in the sidebar.")
+            st.error("Please enter your OpenRouter API key in the sidebar.")
         else:
-            try:
-                # Directing standard OpenAI client to OpenRouter endpoint
-                client = OpenAI(
-                    base_url="https://openrouter.ai/api/v1",
-                    api_key=openrouter_api_key,
-                )
+            with st.spinner("Retrieving facts from knowledge base & querying OpenRouter..."):
+                # Lightweight Keyword Retrieval matching RAG chunks
+                query_words = set(user_query.lower().split())
+                scored_chunks = []
+                
+                for item in rag_chunks:
+                    # Support both dict chunks and string chunks
+                    text_content = item['text'] if isinstance(item, dict) else str(item)
+                    source_doc = item.get('source', 'Sleep Document') if isinstance(item, dict) else 'Knowledge Base'
+                    
+                    score = sum(1 for word in query_words if word in text_content.lower())
+                    scored_chunks.append((score, text_content, source_doc))
+                
+                # Sort and pick top 3 matches
+                scored_chunks.sort(key=lambda x: x[0], reverse=True)
+                top_matches = scored_chunks[:3]
+                
+                context_str = "\n\n".join([f"Source ({m[2]}): {m[1]}" for m in top_matches])
+                
+                # Construct System Prompt based on Mode
+                if "Mode 1" in mode:
+                    system_prompt = f"""You are a helpful sleep coach assistant.
+Using the scientific context below, write a concise answer (2-3 sentences max).
+Do NOT provide medical advice or diagnose conditions. Keep your response supportive and non-medical.
 
-                context_payload = f"User Inputs: Sleep Duration={sleep_duration}h, Quality={sleep_quality}/10, Caffeine={caffeine_intake} cups."
-                if include_ml:
-                    context_payload += f" ML Predicted Alertness={predicted_alertness:.1f}/10 (Note: Low-confidence prediction)."
+CONTEXT:
+{context_str}
 
-                system_prompt = (
-                    "You are an expert AI Sleep Coach grounded in sleep science.\n"
-                    f"Selected Mode: {mode}\n"
-                    f"Context Data: {context_payload}\n"
-                    "Deliver clear, empathetic, and actionable coaching based on evidence-based sleep research."
-                )
+USER CHECK-IN:
+{user_query}"""
+                else:
+                    system_prompt = f"""You are an accountability Sleep Coach dealing with bedtime procrastination.
+Highlight the explicit trade-off between immediate activity gain vs. sacrificed cognitive alertness tomorrow.
+Do NOT provide medical advice. Keep your response supportive and non-medical (2-3 sentences max).
 
-                response = client.chat.completions.create(
-                    extra_headers={
-                        "HTTP-Referer": "https://streamlit.io",
-                        "X-Title": "AI Sleep Coach Demo"
-                    },
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_query}
-                    ],
-                    temperature=0.7
-                )
+CONTEXT:
+{context_str}
 
-                st.success("Analysis Generated Successfully")
-                st.markdown(response.choices[0].message.content)
+USER NEGOTIATION:
+{user_query}"""
 
-            except Exception as e:
-                st.error(f"Execution Error: {e}")
+                # Query OpenRouter API
+                try:
+                    url = "https://openrouter.ai/api/v1/chat/completions"
+                    headers = {
+                        "Authorization": f"Bearer {openrouter_api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": "nvidia/nemotron-3.5-lightning:free",
+                        "messages": [{"role": "user", "content": system_prompt}],
+                        "max_tokens": 300,
+                        "reasoning": {"enabled": False}
+                    }
+                    
+                    response = requests.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    res_json = response.json()
+                    
+                    ai_response = res_json['choices'][0]['message']['content']
+                    
+                    st.success("### AI Coach Guidance")
+                    st.write(ai_response)
+                    
+                    with st.expander("🔍 View Retrieved Knowledge Context"):
+                        for match in top_matches:
+                            st.caption(f"**From {match[2]}:** {match[1]}")
+                            
+                except Exception as e:
+                    st.error(f"OpenRouter API Error: {e}")
+
+# ------------------------------------------------------------------------------
+# TAB 3: System Architecture & Evaluation
+# ------------------------------------------------------------------------------
+with tab3:
+    st.header("Module Integration & Evaluation Analysis")
+    
+    st.subheader("1. System Architecture")
+    st.markdown("""
+    * **Predictive ML Module:** Linear Regression ($R^2 \\approx 0.13$) trained on UK Sleep Dataset metrics (`sleep_model.pkl`).
+    * **RAG Knowledge Base:** Structured chunk index generated from 5 CDC, NSF, NIH, and Harvard peer-reviewed articles (`rag_components.pkl`).
+    * **Inference Engine:** OpenRouter Free API running `nvidia/nemotron-3.5-lightning:free`.
+    """)
+    
+    st.subheader("2. Module Evaluation & Findings")
+    st.info("""
+    **Core Question:** *What additional value does the ML module provide given its limited predictive performance?*
+    
+    **Analysis:** 
+    The ML model serves as an experimental personalization component. While its statistical predictive power is low ($R^2 \\approx 0.13$), passing its predicted sleepiness score directly into the RAG module context enables the conversational agent to tailor its tone and urgency. The RAG architecture serves as the primary, factual foundation of the MVP.
+    """)
