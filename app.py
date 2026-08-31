@@ -244,14 +244,14 @@ with tab1:
         # Question Block 3 (Purple Card Wrapper)
         st.markdown('''
         <div style="background-color: #f3e8ff; border: 2px solid #c084fc; border-radius: 28px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
-            <div class="card-title">Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)</div>
+            <div class="card-title">Rate your current alertness-sleepiness levels (1 = extremely alert; 9 = extremely sleepy)</div>
         </div>
         ''', unsafe_allow_html=True)
         
-        # Slider for Mode 1: Range 0 to 10
+        # Slider for Mode 1: Range 1 to 9
         user_self_kss = st.slider(
-            "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
-            min_value=0, max_value=10, value=5, step=1,
+            "Rate your current alertness-sleepiness levels (1 = extremely alert; 9 = extremely sleepy)",
+            min_value=1, max_value=9, value=5, step=1,
             label_visibility="collapsed"
         )
             
@@ -288,7 +288,7 @@ with tab1:
 CRITICAL INSTRUCTION: Output ONLY your final advice in 1 to 3 sentences maximum. Do NOT include any thinking process, reasoning steps, or intros like "Here's a thinking process:".
 
 The user's predicted Karolinska Sleepiness Scale (KSS) score is {predicted_kss}/9 (1=Extremely Alert, 9=Extremely Sleepy), based on {sleep_duration:.1f} hours of sleep (Bedtime: {bedtime_display}, Wake time: {wake_display}).
-The user self-reported their current alertness-sleepiness as {user_self_kss}/10.
+The user self-reported their current alertness-sleepiness as {user_self_kss}/9.
 Acknowledge their predicted KSS score and sleep stats directly in your advice.
 Using the scientific context below, write a supportive response in max 3 sentences.
 
@@ -448,7 +448,7 @@ with tab2:
     
     st.subheader("1. System Architecture")
     st.markdown("""
-    * **Predictive ML Model:** Multiple Linear Regression ($R^2 \\approx 0.13$) estimating KSS Score (`sleep_model.pkl`) calculated from user schedule inputs.
+    * **Predictive ML Module:** Linear Regression ($R^2 \\approx 0.13$) estimating KSS Score (`sleep_model.pkl`) calculated from user schedule inputs.
     * **Lightweight RAG Engine:** Fast keyword overlap algorithm operating on raw text chunks (`lightweight_rag_components.pkl`).
     * **Inference Engine:** OpenRouter Free API running `nvidia/nemotron-3.5-lightning:free`.
     """)
@@ -457,5 +457,5 @@ with tab2:
     st.info("""
     **Core Question:** *What additional value does the ML module provide given its limited predictive performance?*
     
-    **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) alertness-sleepiness 1-9 score based on calculated sleep durations and bedtime timing. Ideally, passing this KSS metric directly into both coaching modes will allow the A.I. agent to calibrate its urgency and tone based on predicted fatigue. However, since the predictive ML model yielded poor performance (R-squared value of .013), this model should be viewed as a LIMITATION that can negatively affect the large language model's generated output. 
+    **Analysis:** The ML model predicts the user's Karolinska Sleepiness Scale (KSS) score based on calculated sleep durations and bedtime timing. Passing this KSS metric directly into both coaching modes allows the agent to calibrate its urgency and tone based on predicted fatigue.
     """)
