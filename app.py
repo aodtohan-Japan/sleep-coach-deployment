@@ -15,7 +15,7 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Custom CSS targeting Slider numbers, HTML card titles, and Button text
+# Custom CSS targeting Slider numbers, HTML card titles, Text Areas, and Buttons
 st.markdown("""
 <style>
     /* Radio Button Text Styling */
@@ -56,6 +56,11 @@ st.markdown("""
     /* Custom Button Styling */
     div.stButton > button {
         font-weight: 700 !important;
+        font-size: 16px !important;
+    }
+
+    /* Text Area Input Styling */
+    div[data-testid="stTextArea"] textarea {
         font-size: 16px !important;
     }
 </style>
@@ -260,8 +265,19 @@ with tab1:
             min_value=1, max_value=9, value=5, step=1,
             label_visibility="collapsed"
         )
+        
+        # Question Block 4 (Orange/Slate Card Wrapper for Text Area)
+        st.markdown('''
+        <div style="background-color: #f1f5f9; border: 2px solid #94a3b8; border-radius: 28px; padding: 24px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">(REQUIRED) Type in your Sleep Question or Check-in Reflection</div>
+        </div>
+        ''', unsafe_allow_html=True)
             
-        user_query = st.text_area("Type in your Sleep Question or Check-in Reflection", height=120)
+        user_query = st.text_area(
+            "(REQUIRED) Type in your Sleep Question or Check-in Reflection", 
+            height=120, 
+            label_visibility="collapsed"
+        )
         
         if st.button("SUBMIT RESPONSE to Generate Personalized Feedback"):
             t_bed = datetime(2026, 1, 1, bed_hr, bed_min)
@@ -371,7 +387,18 @@ USER REFLECTION:
             label_visibility="collapsed"
         )
 
-        user_query = st.text_area("Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", height=120)
+        # Question Block 4 (Orange/Slate Card Wrapper for Text Area)
+        st.markdown('''
+        <div style="background-color: #f1f5f9; border: 2px solid #94a3b8; border-radius: 28px; padding: 24px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <div class="card-title">(REQUIRED) Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)</div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        user_query = st.text_area(
+            "(REQUIRED) Type in your rationale to delay sleep tonight (i.e. Why are you putting off sleep?)", 
+            height=120, 
+            label_visibility="collapsed"
+        )
 
         if st.button("SUBMIT RESPONSE to Generate Personalized Feedback"):
             t_now = datetime(2026, 1, 1, now_hr, now_min)
