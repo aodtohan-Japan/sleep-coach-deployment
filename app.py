@@ -15,7 +15,7 @@ st.set_page_config(page_title="Sleep Coach MVP", page_icon="🌙", layout="wide"
 st.title("🌙 AI Sleep Coach MVP")
 st.caption("A Hybrid System Combining Machine Learning Predictive Analytics & RAG-Powered Conversational AI")
 
-# Styling for radio buttons and titles inside HTML cards
+# Custom CSS targeting Slider numbers and HTML card titles
 st.markdown("""
 <style>
     /* Radio Button Text Styling */
@@ -33,8 +33,24 @@ st.markdown("""
     .card-title {
         font-size: 1.25rem;
         font-weight: 700;
-        margin-bottom: 12px;
+        margin-bottom: 0px;
         color: #0f172a;
+    }
+
+    /* Target Streamlit Slider Value and Min/Max Endpoint Numbers */
+    div[data-testid="stSlider"] div[data-testid="stTickBarMin"],
+    div[data-testid="stSlider"] div[data-testid="stTickBarMax"],
+    div[data-testid="stSlider"] [data-testid="stMarkdownContainer"] p,
+    div[data-testid="stSlider"] span {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+    }
+
+    /* Enlarged floating current value label above the slider thumb */
+    div[data-testid="stSlider"] div[role="slider"] {
+        font-size: 18px !important;
+        font-weight: 800 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -167,7 +183,7 @@ def render_time_picker(label_prefix, default_hour=10, default_minute=0, default_
         
     return hr_24, int(minute), f"{hour_12:02d}:{minute} {period}"
 
-# Corrected response cleaning function
+# Response cleaning function
 def clean_and_trim_response(text):
     cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
     
@@ -232,9 +248,10 @@ with tab1:
         </div>
         ''', unsafe_allow_html=True)
         
+        # Slider for Mode 1: Range 0 to 10
         user_self_kss = st.slider(
             "Rate your current alertness-sleepiness levels (1 = extremely alert; 10 = extremely sleepy)",
-            min_value=0, max_value=12, value=5, step=1,
+            min_value=0, max_value=10, value=5, step=1,
             label_visibility="collapsed"
         )
             
@@ -271,7 +288,7 @@ with tab1:
 CRITICAL INSTRUCTION: Output ONLY your final advice in 1 to 3 sentences maximum. Do NOT include any thinking process, reasoning steps, or intros like "Here's a thinking process:".
 
 The user's predicted Karolinska Sleepiness Scale (KSS) score is {predicted_kss}/9 (1=Extremely Alert, 9=Extremely Sleepy), based on {sleep_duration:.1f} hours of sleep (Bedtime: {bedtime_display}, Wake time: {wake_display}).
-The user self-reported their current alertness-sleepiness as {user_self_kss}/12.
+The user self-reported their current alertness-sleepiness as {user_self_kss}/10.
 Acknowledge their predicted KSS score and sleep stats directly in your advice.
 Using the scientific context below, write a supportive response in max 3 sentences.
 
@@ -341,6 +358,7 @@ USER REFLECTION:
         </div>
         ''', unsafe_allow_html=True)
 
+        # Slider for Mode 2: Range 0 to 12
         aim_sleep = st.slider(
             "How much sleep are you aiming for? (7-9 hours of sleep is recommended; below 7 hours means sleep deprivation)",
             min_value=0.0, max_value=12.0, value=8.0, step=0.5,
