@@ -30,7 +30,7 @@ def load_pickle_artifacts():
     # Load ML Model Components
     ml_payload = joblib.load('sleep_model.pkl')
     
-    # Load Lightweight RAG Components (Raw text chunks + metadata)
+    # Load Lightweight RAG Components
     rag_payload = joblib.load('lightweight_rag_components.pkl')
     
     return ml_payload, rag_payload
@@ -38,18 +38,29 @@ def load_pickle_artifacts():
 try:
     ml_payload, rag_payload = load_pickle_artifacts()
     
-    # Extract ML objects
+    # --- RESILIENT ML PAYLOAD UNPACKING ---
     if isinstance(ml_payload, dict):
         ml_model = ml_payload.get('model')
-        scaler = ml_payload.get('scaler')
+        scaler = ml_payload.get('scaler', None)
+    elif isinstance(ml_payload, (list, tuple)):
+        ml_model = ml_payload[0]
+        scaler = ml_payload[1] if len(ml_payload) > 1 else None
     else:
-        ml_model, scaler = ml_payload[0], ml_payload[1]
+        # ml_payload is the raw LinearRegression object directly
+        ml_model = ml_payload
+        scaler = None
         
-    # Extract Raw Text Chunks
+    # --- RESILIENT RAG PAYLOAD UNPACKING ---
     if isinstance(rag_payload, dict):
         rag_chunks = rag_payload.get('chunks', rag_payload.get('documents', []))
     else:
         rag_chunks = rag_payload
+
+    st.sidebar.success("✅ Models & Lightweight Text Chunks Loaded Successfully!")
+except Exception as e:
+    st.sidebar.error(f"Error loading .pkl files: {e}")
+    st.error("Please ensure `sleep_model.pkl` and `lightweight_rag_components.pkl` are present in your GitHub repository root folder.")
+    st.stop()
 
     st.sidebar.success("✅ Models & Lightweight Text Chunks Loaded!")
 except Exception as e:
